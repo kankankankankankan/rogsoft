@@ -16,6 +16,11 @@ log_msg() {
     "$LOGGER_BIN" -t "$TAG" "$*"
 }
 
+write_recover_log() {
+    mkdir -p "$(dirname "$TS_RECOVER_LOG")"
+    printf '%s [%s] %s\n' "$(date '+%F %T')" "$1" "$2" >>"$TS_RECOVER_LOG"
+}
+
 write_status() {
     state=$1
     action=$2
@@ -43,19 +48,22 @@ recover_worker() {
     "$SLEEP_BIN" "$TS_RECOVER_DELAY"
 
     if dataplane_healthy; then
+        write_recover_log "INFO" "data plane healthy: tailscale0 IPv4 and table 52 present; no action"
         write_status "正常" "无需恢复"
         log_msg "tailscale0 address and table 52 are healthy"
         return 0
     fi
 
+    write_recover_log "WARN" "data plane missing: starting tailscale down/up recovery"
     write_status "异常" "正在执行 tailscale down/up"
     log_msg "data plane missing; applying preference-preserving down/up recovery"
 
-    : >"$TS_RECOVER_LOG"
+    write_recover_log "INFO" "running: tailscale down"
     "$TS_BIN" down >>"$TS_RECOVER_LOG" 2>&1
     down_rc=$?
     "$SLEEP_BIN" 3
     if [ "$down_rc" -ne 0 ]; then
+        write_recover_log "ERROR" "tailscale down rc=${down_rc}"
         write_status "恢复失败" "tailscale down 返回 ${down_rc}"
         log_msg "recovery failed: tailscale down rc=$down_rc"
         return 1
@@ -64,16 +72,19 @@ recover_worker() {
     # A bare `tailscale up` is the documented inverse of `tailscale down`:
     # it brings back the existing enrolled node without changing any prefs.
     # Supplying only a subset of flags makes newer clients exit with rc=2.
+    write_recover_log "INFO" "running: tailscale up"
     "$TS_BIN" up >>"$TS_RECOVER_LOG" 2>&1
     up_rc=$?
     "$SLEEP_BIN" 10
 
     if [ "$up_rc" -eq 0 ] && dataplane_healthy; then
+        write_recover_log "INFO" "data plane restored"
         write_status "已恢复" "已完成 tailscale down/up"
         log_msg "data plane restored"
         return 0
     fi
 
+    write_recover_log "ERROR" "tailscale up rc=${up_rc}; data plane still missing"
     write_status "恢复失败" "tailscale up 返回 ${up_rc}，详见 tailscale_recover.log"
     log_msg "recovery failed: tailscale up rc=$up_rc or data plane still missing"
     return 1
