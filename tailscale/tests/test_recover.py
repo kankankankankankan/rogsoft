@@ -108,7 +108,7 @@ class RecoverScriptTest(unittest.TestCase):
         calls = self.log.read_text().splitlines() if self.log.exists() else []
         self.assertNotIn("down", calls)
         self.assertFalse(any(call.startswith("up ") for call in calls))
-        self.assertIn("状态：正常", self.status.read_text())
+        self.assertEqual(self.status.read_text(), "状态：正常　处理：无需恢复\n")
 
     def test_broken_dataplane_runs_bare_down_up_to_preserve_preferences(self):
         result = self.run_recover(healthy=False)
@@ -117,12 +117,15 @@ class RecoverScriptTest(unittest.TestCase):
         self.assertIn("down", calls)
         up = next(call for call in calls if call == "up")
         self.assertEqual(up, "up")
-        self.assertIn("状态：已恢复", self.status.read_text())
+        self.assertEqual(self.status.read_text(), "状态：已恢复　处理：已完成 tailscale down/up\n")
 
     def test_failed_recovery_is_reported(self):
         result = self.run_recover(healthy=False, up_succeeds=False)
         self.assertEqual(result.returncode, 1, result.stderr)
-        self.assertIn("状态：恢复失败", self.status.read_text())
+        self.assertEqual(
+            self.status.read_text(),
+            "状态：恢复失败　处理：tailscale up 返回 0，详见 tailscale_recover.log\n",
+        )
         self.assertIn("tailscale up rc=0", (self.dir / "recovery.log").read_text())
 
     def test_recovery_log_records_a_successful_health_check(self):
