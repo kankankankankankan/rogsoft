@@ -2,7 +2,7 @@
 
 # build script for rogsoft project
 MODULE="tailscale"
-VERSION="2.0.8"
+VERSION="2.0.9"
 TITLE="Tailscale"
 DESCRIPTION="基于wiregurad协议的零配置内网穿透安全组网工具！"
 HOME_URL="Module_tailscale.asp"
@@ -30,6 +30,7 @@ do_build() {
 	# prepare to build
 	rm -rf ${DIR}/${MODULE}.tar.gz
 	rm -rf ${DIR}/build && mkdir -p ${DIR}/build
+	echo ${VERSION} >${DIR}/${MODULE}/version
 	cp -rf ${DIR}/${MODULE} ${DIR}/build/ && cd ${DIR}/build
 	echo "build ${MODULE} for ${PLATFORM}"
 	echo ${PLATFORM} >${DIR}/build/${MODULE}/.valid
@@ -47,8 +48,7 @@ do_build() {
 	fi
 	cd ${DIR} && rm -rf ${DIR}/build
 	#-----------------------------------------------------------------------
-	# add version to the package
-	echo ${VERSION} >${MODULE}/version
+	# add version to update metadata
 	md5value=$(md5sum ${MODULE}.tar.gz | tr " " "\n" | sed -n 1p)
 	cat > ./version <<-EOF
 	${VERSION}
