@@ -4,12 +4,12 @@
 
 TS_BIN=${TS_BIN:-/koolshare/bin/tailscale}
 IP_BIN=${IP_BIN:-ip}
-DBUS_BIN=${DBUS_BIN:-dbus}
 LOGGER_BIN=${LOGGER_BIN:-logger}
 SLEEP_BIN=${SLEEP_BIN:-sleep}
 TS_RECOVER_DELAY=${TS_RECOVER_DELAY:-60}
 TS_RECOVER_LOCK=${TS_RECOVER_LOCK:-/tmp/tailscale-recover.lock}
 TS_RECOVER_STATUS=${TS_RECOVER_STATUS:-/tmp/upload/tailscale_recover_status.txt}
+TS_RECOVER_LOG=${TS_RECOVER_LOG:-/tmp/upload/tailscale_recover.log}
 TAG=tailscale-recover
 
 log_msg() {
@@ -37,11 +37,6 @@ dataplane_healthy() {
     return 0
 }
 
-lan_cidr() {
-    "$IP_BIN" -4 route show dev br0 2>/dev/null |
-        awk '$1 ~ /^[0-9]+\./ && $1 ~ /\// { print $1; exit }'
-}
-
 recover_worker() {
     trap 'rmdir "$TS_RECOVER_LOCK" 2>/dev/null' 0 1 2 15
 
@@ -56,7 +51,8 @@ recover_worker() {
     write_status "异常" "正在执行 tailscale down/up"
     log_msg "data plane missing; applying preference-preserving down/up recovery"
 
-    "$TS_BIN" down
+    : >"$TS_RECOVER_LOG"
+    "$TS_BIN" down >>"$TS_RECOVER_LOG" 2>&1
     down_rc=$?
     "$SLEEP_BIN" 3
     if [ "$down_rc" -ne 0 ]; then
@@ -65,40 +61,10 @@ recover_worker() {
         return 1
     fi
 
-    accept_routes=false
-    [ "$($DBUS_BIN get tailscale_accept_routes 2>/dev/null)" = "1" ] &&
-        accept_routes=true
-
-    advertise_routes=$($DBUS_BIN get tailscale_advertise_routes 2>/dev/null)
-    advertise_exit=$($DBUS_BIN get tailscale_exit_node 2>/dev/null)
-
-    set -- up \
-        --accept-routes="$accept_routes" \
-        --accept-dns=false \
-        --snat-subnet-routes=false \
-        --stateful-filtering=false \
-        --netfilter-mode=on \
-        --auto-update=true
-
-    if [ "$advertise_routes" = "1" ]; then
-        cidr=$(lan_cidr)
-        if [ -z "$cidr" ]; then
-            write_status "恢复失败" "无法获取 br0 LAN 网段"
-            log_msg "recovery failed: unable to determine br0 LAN CIDR"
-            return 1
-        fi
-        set -- "$@" --advertise-routes="$cidr"
-    else
-        set -- "$@" --advertise-routes=
-    fi
-
-    if [ "$advertise_exit" = "1" ]; then
-        set -- "$@" --advertise-exit-node=true
-    else
-        set -- "$@" --advertise-exit-node=false
-    fi
-
-    "$TS_BIN" "$@"
+    # A bare `tailscale up` is the documented inverse of `tailscale down`:
+    # it brings back the existing enrolled node without changing any prefs.
+    # Supplying only a subset of flags makes newer clients exit with rc=2.
+    "$TS_BIN" up >>"$TS_RECOVER_LOG" 2>&1
     up_rc=$?
     "$SLEEP_BIN" 10
 
@@ -108,7 +74,7 @@ recover_worker() {
         return 0
     fi
 
-    write_status "恢复失败" "tailscale up 返回 ${up_rc}，数据面仍异常"
+    write_status "恢复失败" "tailscale up 返回 ${up_rc}，详见 tailscale_recover.log"
     log_msg "recovery failed: tailscale up rc=$up_rc or data plane still missing"
     return 1
 }

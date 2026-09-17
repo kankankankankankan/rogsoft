@@ -1,5 +1,9 @@
 Koolshare Asuswrt-Merlin ZeroTier Changelog for HND/AXHND platform
 ===========================================
+2.0.10
+   - fix	数据面恢复使用无参数 tailscale up，保留已存偏好，避免部分参数触发 CLI rc=2。
+   - add	记录 down/up 的命令输出到 /tmp/upload/tailscale_recover.log。
+
 2.0.9
    - fix	WAN/PPPoE 重连后校验 tailscale0 IPv4 与 table 52；异常时执行保留插件路由设置的 down/up 恢复。
    - add	面板显示数据面自愈状态，便于区分控制面在线与内核数据面失效。

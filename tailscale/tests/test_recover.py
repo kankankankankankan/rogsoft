@@ -87,6 +87,7 @@ class RecoverScriptTest(unittest.TestCase):
                 "TS_RECOVER_FOREGROUND": "1",
                 "TS_RECOVER_LOCK": str(self.lock),
                 "TS_RECOVER_STATUS": str(self.status),
+                "TS_RECOVER_LOG": str(self.dir / "recovery.log"),
                 "TS_TEST_STATE": str(self.state),
                 "TS_TEST_CALLS": str(self.log),
                 "TS_TEST_LOGGER": str(self.dir / "logger.txt"),
@@ -109,20 +110,13 @@ class RecoverScriptTest(unittest.TestCase):
         self.assertFalse(any(call.startswith("up ") for call in calls))
         self.assertIn("状态：正常", self.status.read_text())
 
-    def test_broken_dataplane_runs_down_up_with_preserved_plugin_flags(self):
+    def test_broken_dataplane_runs_bare_down_up_to_preserve_preferences(self):
         result = self.run_recover(healthy=False)
         self.assertEqual(result.returncode, 0, result.stderr)
         calls = self.log.read_text().splitlines()
         self.assertIn("down", calls)
-        up = next(call for call in calls if call.startswith("up "))
-        self.assertIn("up", up)
-        self.assertIn("--accept-routes=true", up)
-        self.assertIn("--accept-dns=false", up)
-        self.assertIn("--advertise-routes=192.168.50.0/24", up)
-        self.assertIn("--snat-subnet-routes=false", up)
-        self.assertIn("--stateful-filtering=false", up)
-        self.assertIn("--netfilter-mode=on", up)
-        self.assertIn("--auto-update=true", up)
+        up = next(call for call in calls if call == "up")
+        self.assertEqual(up, "up")
         self.assertIn("状态：已恢复", self.status.read_text())
 
     def test_failed_recovery_is_reported(self):
