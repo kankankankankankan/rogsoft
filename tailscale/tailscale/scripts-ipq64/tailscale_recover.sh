@@ -24,14 +24,7 @@ write_recover_log() {
 write_status() {
     state=$1
     action=$2
-    ipv4=$($TS_BIN ip -4 2>/dev/null | head -n 1)
-    [ -n "$ipv4" ] || ipv4="未分配"
-    {
-        echo "状态：$state"
-        echo "检查时间：$(date '+%F %T')"
-        echo "控制面 IPv4：$ipv4"
-        echo "处理：$action"
-    } >"$TS_RECOVER_STATUS"
+    printf '状态：%s　处理：%s\n' "$state" "$action" >"$TS_RECOVER_STATUS"
 }
 
 dataplane_healthy() {
