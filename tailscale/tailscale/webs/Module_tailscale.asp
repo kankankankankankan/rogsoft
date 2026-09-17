@@ -218,6 +218,7 @@ function get_dbus_data(){
 			if(dbus["tailscale_enable"] == "1"){
 				get_proces_status();
 				get_tcnets_status();
+				get_recover_status();
 				show_hide_element();
 			}
 		}
@@ -341,6 +342,22 @@ function get_tcnets_status(){
 		error: function(XmlHttpRequest, textStatus, errorThrown){
 			console.log(XmlHttpRequest.responseText);
 			setTimeout("get_tcnets_status();", 20000);
+		}
+	});
+}
+function get_recover_status(){
+	$.ajax({
+		url: '/_temp/tailscale_recover_status.txt',
+		type: 'GET',
+		cache: false,
+		dataType: 'text',
+		success: function(response){
+			E("tailscale_recover_status").innerHTML = response.replace(/\n/g, "<br>");
+			setTimeout("get_recover_status();", 10000);
+		},
+		error: function(){
+			E("tailscale_recover_status").innerHTML = "尚未执行数据面检查";
+			setTimeout("get_recover_status();", 10000);
 		}
 	});
 }
@@ -720,6 +737,12 @@ function mOut(obj){
 													<th>tailnet 状态</th>
 													<td>
 														<span style="margin-left:4px" id="tailnet_state"></span>
+													</td>
+												</tr>
+												<tr id="tailscale_recover_tr">
+													<th>数据面自愈状态</th>
+													<td>
+														<span style="margin-left:4px" id="tailscale_recover_status">尚未执行数据面检查</span>
 													</td>
 												</tr>
 												<tr id="tailscale_console_tr">
