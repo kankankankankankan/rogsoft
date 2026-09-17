@@ -430,6 +430,8 @@ function get_log(flag){
 	showWBLoadingBar();
 	if(flag == 2){
 		var TARGET_URL = '/_temp/tailscaled_log.txt'
+	}else if(flag == 3){
+		var TARGET_URL = '/_temp/tailscale_recover.log'
 	}else{
 		var TARGET_URL = '/_temp/tailscale_log.txt'
 	}
@@ -440,7 +442,7 @@ function get_log(flag){
 		dataType: 'text',
 		success: function(response) {
 			var retArea = E("log_content");
-			if(flag == 2){
+			if(flag == 2 || flag == 3){
 				retArea.value = response;
 				E("ok_button").style.visibility = "visible";
 				retArea.scrollTop = retArea.scrollHeight;
@@ -703,6 +705,7 @@ function mOut(obj){
 											<span><a type="button" href="https://github.com/koolshare/rogsoft/blob/master/tailscale/Changelog.txt" target="_blank" class="ks_btn" style="margin-left:5px;" >更新日志</a></span>
 											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(1)" style="margin-left:5px;">查看插件日志</a></span>
 											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(2)" style="margin-left:5px;">tailscaled运行日志</a></span>
+											<span><a type="button" class="ks_btn" href="javascript:void(0);" onclick="get_log(3)" style="margin-left:5px;">数据面自愈日志</a></span>
 										</div>
 										<div id="tailscale_main">
 											<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" class="FormTable">

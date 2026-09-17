@@ -123,6 +123,12 @@ class RecoverScriptTest(unittest.TestCase):
         result = self.run_recover(healthy=False, up_succeeds=False)
         self.assertEqual(result.returncode, 1, result.stderr)
         self.assertIn("状态：恢复失败", self.status.read_text())
+        self.assertIn("tailscale up rc=0", (self.dir / "recovery.log").read_text())
+
+    def test_recovery_log_records_a_successful_health_check(self):
+        result = self.run_recover(healthy=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("data plane healthy", (self.dir / "recovery.log").read_text())
 
     def test_wan_hook_starts_recovery(self):
         hook = HOOK.read_text()
@@ -132,6 +138,11 @@ class RecoverScriptTest(unittest.TestCase):
         web = WEB.read_text()
         self.assertIn("get_recover_status", web)
         self.assertIn('id="tailscale_recover_status"', web)
+
+    def test_panel_exposes_recovery_log_in_the_existing_log_dialog(self):
+        web = WEB.read_text()
+        self.assertIn("get_log(3)", web)
+        self.assertIn("tailscale_recover.log", web)
 
 
 if __name__ == "__main__":
